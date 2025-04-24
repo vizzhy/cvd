@@ -23,14 +23,14 @@
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script>
   function chart(data) {
-    const width = 1200;
+    const width = 1300;
     const marginTop = 10;
     const marginRight = 10;
     const marginBottom = 10;
-    const marginLeft = 100;
+    const marginLeft = 115;
   
     const root = d3.hierarchy(data);
-    const dx = 127;
+    const dx = 128;
     const dy = 30;
   
     const tree = d3.tree().nodeSize([dy, dx]);
@@ -134,6 +134,12 @@
         .attr("x", d => d._children ? -6 : 6)
         .attr("text-anchor", d => d._children ? "end" : "start")
         .text(d => d.data.name)
+        .style("font", d => {
+          const size = d.depth === 0 ? 14 : 12;
+          const weight = d.data.name === "CVD biomarkers" ? "bold" : "normal";
+          return `${weight} ${size}px sans-serif`;
+        })
+        .style("fill", "black")
         .attr("stroke-linejoin", "round")
         .attr("stroke-width", 3)
         .attr("stroke", "white")
