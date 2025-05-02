@@ -1,21 +1,25 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CVD Biomarker Tree</title>
   <style>
-    html, body {
+    html,
+    body {
       height: 100%;
       margin: 0;
       padding: 0.5rem;
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
       background: #f9f9f9;
     }
+
     svg {
       width: 100%;
       height: 100%;
     }
+
     .tooltip {
       position: absolute;
       text-align: left;
@@ -29,11 +33,13 @@
       max-width: 300px;
       line-height: 1.4em;
     }
+
     .search-box {
       display: flex;
       justify-content: center;
       margin: 10px;
     }
+
     .search-box input[type="text"] {
       padding: 8px 12px;
       font-size: 16px;
@@ -41,6 +47,7 @@
       border-radius: 5px 0 0 5px;
       outline: none;
     }
+
     .search-box button {
       padding: 8px 16px;
       font-size: 16px;
@@ -50,9 +57,11 @@
       background-color: #f0f0f0;
       cursor: pointer;
     }
+
     .search-box button:hover {
       background-color: #e0e0e0;
     }
+
     .modal {
       display: none;
       position: fixed;
@@ -64,6 +73,7 @@
       overflow: auto;
       background-color: rgba(0, 0, 0, 0.5);
     }
+
     .modal-content {
       background-color: white;
       margin: 10% auto;
@@ -73,6 +83,7 @@
       max-width: 600px;
       border-radius: 10px;
     }
+
     .close {
       color: #aaa;
       float: right;
@@ -80,241 +91,253 @@
       font-weight: bold;
       cursor: pointer;
     }
+
     .close:hover {
       color: black;
     }
+
     .modal-body {
       margin-top: 10px;
     }
   </style>
 </head>
+
 <body>
 
-<!-- Search Box -->
-<div class="search-box">
-  <input type="text" id="searchInput" placeholder="Search biomarker..." list="suggestions" oninput="updateSuggestions()" />
-  <datalist id="suggestions"></datalist>
-  <button onclick="searchTree()">🔍</button>
-</div>
-
-<!-- Modal -->
-<div id="resultModal" class="modal">
-  <div class="modal-content">
-    <span class="close" onclick="closeModal()">&times;</span>
-    <h2>Search Results</h2>
-    <div id="modalBody" class="modal-body"></div>
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="Search biomarker..." list="suggestions"
+      oninput="updateSuggestions()" />
+    <datalist id="suggestions"></datalist>
+    <button onclick="searchTree()">🔍</button>
   </div>
-</div>
 
-<script src="https://d3js.org/d3.v7.min.js"></script>
-<script>
-let root, svg, tree, diagonal, gNode;
+  <div id="resultModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal()">&times;</span>
+      <h2>Search Results</h2>
+      <div id="modalBody" class="modal-body"></div>
+    </div>
+  </div>
 
-function chart(data) {
-  const baseWidth = window.innerWidth;
-  const marginTop = 20, marginRight = 200, marginBottom = 20, marginLeft = 205;
-  root = d3.hierarchy(data);
-  const dx = 275, dy = 65;
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script>
+    let root, svg, tree, diagonal, gNode;
 
-  tree = d3.tree().nodeSize([dy, dx]);
-  diagonal = d3.linkHorizontal().x(d => d.y).y(d => d.x);
+    function chart(data) {
+      const baseWidth = window.innerWidth;
+      const marginTop = 20, marginRight = 200, marginBottom = 20, marginLeft = 205;
+      root = d3.hierarchy(data);
+      const dx = 275, dy = 65;
 
-  svg = d3.create("svg")
-    .attr("viewBox", [-marginLeft, -marginTop, baseWidth + marginRight, dx])
-    .attr("style", "max-width: 100%; height: auto; font: 12px sans-serif; user-select: none;");
+      tree = d3.tree().nodeSize([dy, dx]);
+      diagonal = d3.linkHorizontal().x(d => d.y).y(d => d.x);
 
-  const gLink = svg.append("g").attr("fill", "none").attr("stroke", "#555").attr("stroke-opacity", 0.4).attr("stroke-width", 1.5);
-  gNode = svg.append("g").attr("cursor", "pointer").attr("pointer-events", "all");
+      svg = d3.create("svg")
+        .attr("viewBox", [-marginLeft, -marginTop, baseWidth + marginRight, dx])
+        .attr("style", "max-width: 100%; height: auto; font: 12px sans-serif; user-select: none;");
 
-  const tooltip = d3.select("body").append("div").attr("class", "tooltip").style("opacity", 0);
+      const gLink = svg.append("g").attr("fill", "none").attr("stroke", "#555").attr("stroke-opacity", 0.4).attr("stroke-width", 1.5);
+      gNode = svg.append("g").attr("cursor", "pointer").attr("pointer-events", "all");
 
-  function highlightSubtree(node, highlight) {
-    const descendants = node.descendants().map(d => d.id);
-    svg.selectAll("path")
-      .attr("stroke", d => (descendants.includes(d.target.id) && highlight) ? "#ff7f0e" : "#555")
-      .attr("stroke-opacity", d => (descendants.includes(d.target.id) && highlight) ? 1 : 0.4)
-      .attr("stroke-width", d => (descendants.includes(d.target.id) && highlight) ? 3 : 1.5);
-  }
+      const tooltip = d3.select("body").append("div").attr("class", "tooltip").style("opacity", 0);
 
-  function update(event, source) {
-    const duration = event?.altKey ? 2000 : 500;
-    const nodes = root.descendants().reverse();
-    const links = root.links();
-    tree(root);
+      function highlightSubtree(node, highlight) {
+        const descendants = node.descendants().map(d => d.id);
+        svg.selectAll("path")
+          .attr("stroke", d => (descendants.includes(d.target.id) && highlight) ? "#ff7f0e" : "#555")
+          .attr("stroke-opacity", d => (descendants.includes(d.target.id) && highlight) ? 1 : 0.4)
+          .attr("stroke-width", d => (descendants.includes(d.target.id) && highlight) ? 3 : 1.5);
+      }
 
-    let top = root, bottom = root;
-    root.eachBefore(node => {
-      if (node.x < top.x) top = node;
-      if (node.x > bottom.x) bottom = node;
-    });
+      function update(event, source) {
+        const duration = event?.altKey ? 2000 : 500;
+        const nodes = root.descendants().reverse();
+        const links = root.links();
+        tree(root);
 
-    const height = bottom.x - top.x + marginTop + marginBottom;
-    const depth = root.height || 1;
-    const width = depth * dx + marginLeft + marginRight;
+        let top = root, bottom = root;
+        root.eachBefore(node => {
+          if (node.x < top.x) top = node;
+          if (node.x > bottom.x) bottom = node;
+        });
 
-    const transition = svg.transition().duration(duration).attr("viewBox", [-marginLeft, top.x - marginTop, width, height]);
+        const height = bottom.x - top.x + marginTop + marginBottom;
+        const depth = root.height || 1;
+        const width = depth * dx + marginLeft + marginRight;
 
-    const node = gNode.selectAll("g").data(nodes, d => d.id);
+        const transition = svg.transition().duration(duration).attr("viewBox", [-marginLeft, top.x - marginTop, width, height]);
 
-    const nodeEnter = node.enter().append("g")
-      .attr("transform", d => `translate(${source.y0},${source.x0})`)
-      .attr("fill-opacity", 0)
-      .attr("stroke-opacity", 0)
-      .on("click", (event, d) => {
-        d.children = d.children ? null : d._children;
-        update(event, d);
-      })
-      .on("mouseover", (event, d) => {
-        highlightSubtree(d, true);
-        if (d.data.tooltip) {
-          tooltip.transition().duration(200).style("opacity", 0.95);
-          tooltip.html(d.data.tooltip)
-            .style("left", (event.pageX + 20) + "px")
-            .style("top", (event.pageY - 20) + "px");
+        const node = gNode.selectAll("g").data(nodes, d => d.id);
+
+        const nodeEnter = node.enter().append("g")
+          .attr("transform", d => `translate(${source.y0},${source.x0})`)
+          .attr("fill-opacity", 0)
+          .attr("stroke-opacity", 0)
+          .on("click", (event, d) => {
+            d.children = d.children ? null : d._children;
+            update(event, d);
+          })
+          .on("mouseover", (event, d) => {
+            highlightSubtree(d, true);
+            if (d.data.tooltip) {
+              tooltip.transition().duration(200).style("opacity", 0.95);
+              tooltip.html(d.data.tooltip)
+                .style("left", (event.pageX + 20) + "px")
+                .style("top", (event.pageY - 20) + "px");
+            }
+          })
+          .on("mousemove", (event) => {
+            tooltip.style("left", (event.pageX + 20) + "px")
+              .style("top", (event.pageY - 20) + "px");
+          })
+          .on("mouseout", () => {
+            highlightSubtree(root, false);
+            tooltip.transition().duration(300).style("opacity", 0);
+          });
+
+        nodeEnter.append("circle")
+          .attr("r", d => d.depth === 0 ? 6 : 4)
+          .attr("fill", d => !d.children && !d._children ? "red" : (d._children ? "#555" : "#999"))
+          .attr("stroke-width", 2);
+
+        nodeEnter.append("text")
+          .attr("dy", "0.31em")
+          .attr("x", d => d.depth === 0 ? -12 : 8)
+          .attr("text-anchor", d => d.depth === 0 ? "end" : "start")
+          .style("font-weight", d => d.depth === 0 ? "bold" : "normal")
+          .style("font-size", d => d.depth === 0 ? "25px" : "22px")
+          .style("stroke-linejoin", "round")
+          .style("stroke-width", 3)
+          .style("stroke", "white")
+          .attr("paint-order", "stroke")
+          .each(function (d) {
+            const name = d.data.name;
+            const maxLength = 28;
+            const anchor = d.depth === 0 ? -12 : 8;
+            if (name.length > maxLength) {
+              d3.select(this).append("tspan").attr("x", anchor).attr("dy", "-0.4em").text(name.slice(0, maxLength));
+              d3.select(this).append("tspan").attr("x", anchor).attr("dy", "1.2em").text(name.slice(maxLength));
+            } else {
+              d3.select(this).append("tspan").attr("x", anchor).text(name);
+            }
+          });
+
+        node.merge(nodeEnter).transition(transition)
+          .attr("transform", d => `translate(${d.y},${d.x})`)
+          .attr("fill-opacity", 1)
+          .attr("stroke-opacity", 1);
+
+        node.exit().transition(transition).remove()
+          .attr("transform", d => `translate(${source.y},${source.x})`)
+          .attr("fill-opacity", 0)
+          .attr("stroke-opacity", 0);
+
+        const link = gLink.selectAll("path").data(links, d => d.target.id);
+        const linkEnter = link.enter().append("path").attr("d", d => {
+          const o = { x: source.x0, y: source.y0 };
+          return diagonal({ source: o, target: o });
+        });
+
+        link.merge(linkEnter).transition(transition).attr("d", diagonal);
+        link.exit().transition(transition).remove().attr("d", d => {
+          const o = { x: source.x, y: source.y };
+          return diagonal({ source: o, target: o });
+        });
+
+        root.eachBefore(d => {
+          d.x0 = d.x;
+          d.y0 = d.y;
+        });
+      }
+
+      root.x0 = 0;
+      root.y0 = 0;
+      root.descendants().forEach((d, i) => {
+        d.id = i;
+        if (d.depth > 0) {
+          d._children = d.children;
+          d.children = null;
         }
-      })
-      .on("mousemove", (event) => {
-        tooltip.style("left", (event.pageX + 20) + "px")
-          .style("top", (event.pageY - 20) + "px");
-      })
-      .on("mouseout", () => {
-        highlightSubtree(root, false);
-        tooltip.transition().duration(300).style("opacity", 0);
       });
 
-    nodeEnter.append("circle")
-      .attr("r", d => d.depth === 0 ? 6 : 4)
-      .attr("fill", d => !d.children && !d._children ? "red" : (d._children ? "#555" : "#999"))
-      .attr("stroke-width", 2);
-
-    nodeEnter.append("text")
-      .attr("dy", "0.31em")
-      .attr("x", d => d.depth === 0 ? -12 : 8)
-      .attr("text-anchor", d => d.depth === 0 ? "end" : "start")
-      .style("font-weight", d => d.depth === 0 ? "bold" : "normal")
-      .style("font-size", d => d.depth === 0 ? "25px" : "22px")
-      .style("stroke-linejoin", "round")
-      .style("stroke-width", 3)
-      .style("stroke", "white")
-      .attr("paint-order", "stroke")
-      .each(function(d) {
-        const name = d.data.name;
-        const maxLength = 28;
-        const anchor = d.depth === 0 ? -12 : 8;
-        if (name.length > maxLength) {
-          d3.select(this).append("tspan").attr("x", anchor).attr("dy", "-0.4em").text(name.slice(0, maxLength));
-          d3.select(this).append("tspan").attr("x", anchor).attr("dy", "1.2em").text(name.slice(maxLength));
-        } else {
-          d3.select(this).append("tspan").attr("x", anchor).text(name);
-        }
-      });
-
-    node.merge(nodeEnter).transition(transition)
-      .attr("transform", d => `translate(${d.y},${d.x})`)
-      .attr("fill-opacity", 1)
-      .attr("stroke-opacity", 1);
-
-    node.exit().transition(transition).remove()
-      .attr("transform", d => `translate(${source.y},${source.x})`)
-      .attr("fill-opacity", 0)
-      .attr("stroke-opacity", 0);
-
-    const link = gLink.selectAll("path").data(links, d => d.target.id);
-    const linkEnter = link.enter().append("path").attr("d", d => {
-      const o = { x: source.x0, y: source.y0 };
-      return diagonal({ source: o, target: o });
-    });
-
-    link.merge(linkEnter).transition(transition).attr("d", diagonal);
-    link.exit().transition(transition).remove().attr("d", d => {
-      const o = { x: source.x, y: source.y };
-      return diagonal({ source: o, target: o });
-    });
-
-    root.eachBefore(d => {
-      d.x0 = d.x;
-      d.y0 = d.y;
-    });
-  }
-
-  root.x0 = 0;
-  root.y0 = 0;
-  root.descendants().forEach((d, i) => {
-    d.id = i;
-    if (d.depth > 0) {
-      d._children = d.children;
-      d.children = null;
+      update(null, root);
+      return svg.node();
     }
-  });
 
-  update(null, root);
-  return svg.node();
-}
+    function buildSubtreeHtml(node, level = 0, index = 1) {
+      let html = `<ul style="list-style-type: ${level === 1 ? 'none' : 'disc'};">`;
+      html += "<li>";
 
-// ✅ Updated function: show only numbers at level 1 without hollow dots
-function buildSubtreeHtml(node, level = 0, index = 1) {
-  let html = `<ul style="list-style-type: ${level === 1 ? 'none' : 'disc'};">`;
-  html += "<li>";
+      if (level === 1) {
+        html += `<strong>${index}. ${node.data.name}</strong>`;
+      } else {
+        html += `<strong>${node.data.name}</strong>`;
+      }
 
-  if (level === 1) {
-    html += `<strong>${index}. ${node.data.name}</strong>`;
-  } else {
-    html += `<strong>${node.data.name}</strong>`;
-  }
+      if (node.data.tooltip) {
+        html += `<br/>${node.data.tooltip}`;
+      }
 
-  if (node.data.tooltip) {
-    html += `<br/>${node.data.tooltip}`;
-  }
+      html += "</li>";
 
-  html += "</li>";
+      const children = node.children || node._children;
+      if (children) {
+        children.forEach((child, i) => {
+          html += buildSubtreeHtml(child, level + 1, i + 1);
+        });
+      }
 
-  const children = node.children || node._children;
-  if (children) {
-    children.forEach((child, i) => {
-      html += buildSubtreeHtml(child, level + 1, i + 1);
+      html += "</ul>";
+      return html;
+    }
+
+    function getAllDescendants(node) {
+      const nodes = [node];
+      const children = node.children || node._children || [];
+      for (const child of children) {
+        nodes.push(...getAllDescendants(child));
+      }
+      return nodes;
+    }
+
+    function searchTree() {
+      const query = document.getElementById("searchInput").value.trim().toLowerCase();
+      if (!query) return alert("Please enter a search term.");
+
+      const allNodes = getAllDescendants(root);
+      const matchNode = allNodes.find(d => d.data.name.toLowerCase().includes(query));
+      const modal = document.getElementById("resultModal");
+      const modalBody = document.getElementById("modalBody");
+
+      modalBody.innerHTML = matchNode
+        ? buildSubtreeHtml(matchNode)
+        : "<p>No matching information found.</p>";
+
+      modal.style.display = "block";
+    }
+
+    function updateSuggestions() {
+      const input = document.getElementById("searchInput").value.trim().toLowerCase();
+      const datalist = document.getElementById("suggestions");
+
+      const allNodes = getAllDescendants(root);
+      const names = allNodes.map(d => d.data.name);
+      const filtered = [...new Set(names.filter(name => name.toLowerCase().includes(input)))];
+      datalist.innerHTML = filtered.map(name => `<option value="${name}">`).join('');
+    }
+
+
+    function closeModal() {
+      document.getElementById("resultModal").style.display = "none";
+    }
+
+    d3.json("dd.json").then(data => {
+      document.body.appendChild(chart(data));
+    }).catch(error => {
+      console.error("Error loading data:", error);
+      document.body.innerHTML = "<h2 style='color: red;'>Failed to load tree data.</h2>";
     });
-  }
-
-  html += "</ul>";
-  return html;
-}
-
-// Search and show complete subtree in modal
-function searchTree() {
-  const query = document.getElementById("searchInput").value.trim().toLowerCase();
-  if (!query) return alert("Please enter a search term.");
-  const modal = document.getElementById("resultModal");
-  const modalBody = document.getElementById("modalBody");
-
-  const matchNode = root.descendants().find(d => d.data.name.toLowerCase().includes(query));
-  modalBody.innerHTML = matchNode
-    ? buildSubtreeHtml(matchNode)
-    : "<p>No matching information found.</p>";
-
-  modal.style.display = "block";
-}
-
-// Autocomplete suggestions
-function updateSuggestions() {
-  const input = document.getElementById("searchInput").value.trim().toLowerCase();
-  const datalist = document.getElementById("suggestions");
-  const names = root.descendants().map(d => d.data.name);
-  const filtered = [...new Set(names.filter(name => name.toLowerCase().includes(input)))];
-  datalist.innerHTML = filtered.map(name => `<option value="${name}">`).join('');
-}
-
-// Close modal
-function closeModal() {
-  document.getElementById("resultModal").style.display = "none";
-}
-
-// Load JSON and build tree
-d3.json("dd.json").then(data => {
-  document.body.appendChild(chart(data));
-}).catch(error => {
-  console.error("Error loading data:", error);
-  document.body.innerHTML = "<h2 style='color: red;'>Failed to load tree data.</h2>";
-});
-</script>
+  </script>
 </body>
+
 </html>
